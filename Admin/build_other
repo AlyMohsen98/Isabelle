@@ -1,0 +1,9 @@
+#!/usr/bin/env bash
+#
+# DESCRIPTION: build other Isabelle from sync_repos directory
+
+unset CDPATH
+THIS="$(cd "$(dirname "$0")"; pwd)"
+
+"$THIS/../bin/isabelle" scala_build -q || exit $?
+"$THIS/../bin/isabelle_java" isabelle.Build_History "$@"

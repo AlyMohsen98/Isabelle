@@ -1,0 +1,3 @@
+title = Isabelle/Scala/Admin
+module = $ISABELLE_HOME/lib/classes/isabelle_admin.jar
+services = isabelle.Admin_Tools

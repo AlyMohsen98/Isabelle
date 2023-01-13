@@ -1,0 +1,116 @@
+Checklist for official releases
+===============================
+
+- check latest updates of polyml, jdk, scala, jedit;
+
+- check isabelle.Dotnet_Setup.default_version:
+    $ isabelle dotnet_setup -n -v -V "" | grep invocation
+
+- check Admin/components;
+
+- test "isabelle dump -b Pure ZF";
+
+- test "isabelle build -o export_theory -f ZF";
+
+- test "isabelle server" according to "system" manual;
+
+- test Isabelle/VSCode;
+
+- test Isabelle/jEdit: print buffer
+
+- test Isabelle/jEdit: deactivate main plugin;
+
+- test "#!/usr/bin/env isabelle_scala_script";
+
+- test "isabelle java_monitor -P pid" with "isabelle jedit";
+
+- test Windows 10 subsystem for Linux:
+  https://docs.microsoft.com/en-us/windows/wsl/install-win10
+
+- check (non-)executable files:
+    $ find . "(" -name "*.thy" -o -name "*.ML" -o -name "*.scala" -o -name ROOT ")" -executable
+    $ find -type f -executable
+
+- check sources:
+    isabelle check_sources '~~' '$AFP_BASE'
+
+- check ANNOUNCE, README, NEWS, COPYRIGHT, CONTRIBUTORS;
+
+- check versions:
+    src/Tools/jEdit/jedit_base/plugin.props
+    src/Tools/jEdit/jedit_main/plugin.props
+    src/Tools/VSCode/extension/package.json
+
+- check funny base directory, e.g. "Test 中国";
+
+- diff NEWS wrt. last official release, which is read-only;
+
+- update https://isabelle.sketis.net/repos/isabelle-website
+
+- check doc/Contents, $JEDIT_HOME/doc/Contents;
+
+- test old HD display: Linux, Windows, macOS;
+
+- macOS: check recent MacTeX;
+
+- Windows: check recent MiKTeX;
+
+- Phabricator:
+    . src/Doc/System/Phabricator.thy: check/update underlying Ubuntu version
+    . etc/options: check/update phabricator_version entries;
+
+
+Repository fork
+===============
+
+- isabelle: finalize NEWS / CONTRIBUTORS -- proper headers for named release;
+
+- isabelle-release: hg tag;
+
+- isabelle: back to post-release mode -- after fork point;
+
+
+Packaging
+=========
+
+- regular packaging:
+
+  #source archive
+  Admin/build_release -D ~/tmp/isadist -b HOL -R Isabelle2022 -p ""
+
+  #on fast Linux machine, with access to Linux + Windows build_host
+  Admin/build_release -D ~/tmp/isadist -b HOL -R Isabelle2022 -p linux,windows -l
+
+  #with access Apple ARM build_host
+  Admin/build_release -D ~/tmp/isadist -b HOL -R Isabelle2022 -p macos
+
+  #with access Linux ARM build_host
+  Admin/build_release -D ~/tmp/isadist -b HOL -R Isabelle2022 -p linux_arm
+
+- Docker image:
+
+  isabelle build_docker -o Dockerfile -E -t makarius/isabelle:Isabelle2022 Isabelle2022_linux.tar.gz
+  isabelle build_docker -o Dockerfile -E -t makarius/isabelle:Isabelle2022_X11_Latex -P X11 -P latex Isabelle2022_linux.tar.gz
+
+  isabelle build_docker -o Dockerfile -E -t makarius/isabelle:Isabelle2022_ARM Isabelle2022_linux_arm.tar.gz
+  isabelle build_docker -o Dockerfile -E -t makarius/isabelle:Isabelle2022_ARM_X11_Latex -P X11 -P latex Isabelle2022_linux_arm.tar.gz
+
+  docker login
+
+  docker push makarius/isabelle:Isabelle2022
+
+  docker tag ... latest
+  docker push makarius/isabelle:latest
+
+  https://hub.docker.com/r/makarius/isabelle
+  https://docs.docker.com/engine/reference/commandline/push
+
+
+Post-release
+============
+
+- update .hgtags
+
+- update Admin/Release/official
+
+- update /p/home/isabelle and /p/home/isabelle/html-data
