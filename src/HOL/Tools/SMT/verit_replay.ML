@@ -97,9 +97,14 @@ fun replay_theorem_step rewrite_rules ll_defs assumed inputs proof_prems
      subproof = (fixes, assms, input, subproof), concl, ...}) state =
   let
     val (proofs, stats, ctxt, concl_tranformation, global_transformation) = state
+   val _ = @{print} id
+   val _ = @{print} concl
+val _ = @{print} rule
+val _ = @{print} ("fixes", fixes)
+
     val (_, ctxt) = Variable.variant_fixes (map fst bounds) ctxt
       |> (fn (names, ctxt) => (names,
-        fold Variable.declare_term [SMTLIB_Isar.unskolemize_names ctxt concl] ctxt))
+        fold Variable.declare_term [@{print}(SMTLIB_Isar.unskolemize_names ctxt concl)] ctxt))
 (*val _ = @{print} "prems in replay_theorem_step"    
 val _ = @{print} prems*)
 
@@ -158,8 +163,7 @@ val _ = @{print} proofs*)
         handle Timeout.TIMEOUT _ => raise SMT_Failure.SMT SMT_Failure.Time_Out
     val stats' = Symtab.cons_list (rule, Time.toNanoseconds elapsed) stats
     val proofs = Symtab.update (id, (map fst bounds, thm)) proofs
-  in (proofs, stats', ctxt,
-       concl_tranformation, sub_global_rew) end
+  in (proofs, stats', ctxt, concl_tranformation, sub_global_rew) end
 
 fun replay_definition_step rewrite_rules ll_defs _ _ _
   (Lethe_Proof.Lethe_Replay_Node {id, declarations = raw_declarations, subproof = (_, _, _, subproof), ...}) state =
@@ -184,6 +188,7 @@ fun replay_definition_step rewrite_rules ll_defs _ _ _
           then Termtab.update_new (a, b) tab else tab
     val global_transformation = global_transformation 
      |> fold update_mapping (ListPair.zip (old_names, new_names))
+|> @{print}  
     val global_transformer = subst_only_free global_transformation
 
     val generate_definition =
@@ -195,7 +200,7 @@ fun replay_definition_step rewrite_rules ll_defs _ _ _
     val decls = map generate_definition declaration
     val (defs, ctxt) = Assumption.add_assumes decls ctxt
     val thms_with_old_name = ListPair.zip (map fst declaration, defs)
-
+|> @{print}
     val proofs = fold
       (fn (name, thm) => let in  Symtab.update (id, ([name], @{thm sym} OF [thm])) end)
       thms_with_old_name proofs
@@ -224,9 +229,9 @@ fun replay_assumed assms ll_defs rewrite_rules stats ctxt term =
 
 fun replay_step rewrite_rules ll_defs assumed inputs proof_prems
   (step as Lethe_Proof.Lethe_Replay_Node {rule, id, concl, ...}) state = let
-(*    val _ = @{print} id
+   val _ = @{print} id
    val _ = @{print} concl
-val _ = @{print} rule*)
+val _ = @{print} rule
 
   in
     if rule = Lethe_Proof.lethe_def
@@ -247,9 +252,9 @@ fun skip_proving concl rule ctxt thm_with_defs =
     else Verit_Replay_Methods.discharge ctxt [thm_with_defs] concl
 
 fun replay_helper outer_ctxt
-    ({context = ctxt, typs, terms, rewrite_rules, assms, ll_defs, ...} : SMT_Translate.replay_data)
-     output (name_bindings_input, lines_left_input, state_input, smtlib_proof_input) skip = let
-    val (proofs_input, _, context_input, _, _) = state_input
+    ({context = orig_ctxt, typs, terms, rewrite_rules, assms, ll_defs, ...} : SMT_Translate.replay_data)
+     output (ctxt, name_bindings_input, lines_left_input, state_input, smtlib_proof_input) skip = let
+    val (proofs_input, stats, context_input, concl_tranformation, global_transformation) = state_input
     (*val ctxt = context_input*)
     (* 
 type ('a, 'b) context = {
@@ -260,7 +265,6 @@ type ('a, 'b) context = {
   funs: term Symtab.table,
   extra: 'a} *)
 
-    val ctxt = #ctxt smtlib_proof_input
     val typs = #typs smtlib_proof_input
     val terms = #funs smtlib_proof_input
 
@@ -276,11 +280,9 @@ type ('a, 'b) context = {
     val start0 = Timing.start ()
     (*val _ = @{print} name_bindings_input*)
     val (actual_steps, smtlib_proof_output, name_bindings_output, lines_left_output) =
-      Lethe_Proof.parse_replay typs terms output ctxt name_bindings_input lines_left_input smtlib_proof_input
+      Lethe_Proof.parse_replay typs terms output context_input name_bindings_input lines_left_input smtlib_proof_input
     val ctxt2 = #ctxt smtlib_proof_output
     val _ = @{print} #$ SMTLIB_Proof.lookup_binding smtlib_proof_output "veriT_sk0"
-    val last_concl = get_concl #$ last actual_steps
-    val last_rule = get_rule #$ last actual_steps
     (*val _ = @{print} name_bindings_input
     val _ = @{print} output
     val _ = @{print} (actual_steps, ctxt2)*)
@@ -329,7 +331,7 @@ type ('a, 'b) context = {
       in
         (Symtab.update (name, ([], thm)) assumed, stats)
       end)
-      used_rew_js (assumed, Symtab.cons_list ("parsing", parsing_time) Symtab.empty)
+      used_rew_js (assumed, Symtab.cons_list ("parsing", parsing_time) stats)
 
     val ctxt4 =
       ctxt3
@@ -339,24 +341,26 @@ type ('a, 'b) context = {
     fun steps_with_depth _ [] = []
       | steps_with_depth i (p :: ps) = (i +  Lethe_Proof.number_of_steps [p], p) ::
           steps_with_depth (i +  Lethe_Proof.number_of_steps [p]) ps
-    val actual_steps = steps_with_depth 0 actual_steps
+    val flat_steps = steps_with_depth 0 actual_steps
     val start = Timing.start ()
     val print_runtime_statistics = SMT_Replay.intermediate_statistics ctxt4 start len
     fun blockwise f (i, x) (next, y) =
       (if i > next then print_runtime_statistics i else ();
        (if i > next then i + 10 else next, f x y))
-    val global_transformation : term Termtab.table = Termtab.empty
     
     (*val _ = @{print} assumed
     val _ = @{print} proofs_input*)
     val assumed = Symtab.merge (fn ((x1,x2),(y1,y2)) => let
       in true end) (assumed, proofs_input)
     val (state_output) = (*state to be carried on*)
-      fold ( (replay_step rewrite_rules ll_defs assumed [] [])) (map (fn (_,y) => y) actual_steps)
-        ( (assumed, stats, ctxt4, [], global_transformation))
+      fold ( (replay_step rewrite_rules ll_defs assumed [] [])) (map (fn (_,y) => y) flat_steps)
+        ( (assumed, stats, ctxt4, concl_tranformation, global_transformation))
     val  (proofs, stats, ctxt5, _, _) = state_output
     val total = Time.toMilliseconds (#elapsed (Timing.result start))
-    val (_, (_, Lethe_Proof.Lethe_Replay_Node {id, ...})) = split_last actual_steps
+val _ = @{print} actual_steps
+val _ = @{print} flat_steps
+    val (_, (_, Lethe_Proof.Lethe_Replay_Node {id, ...})) = split_last flat_steps
+|> @{print} 
     val _ = print_runtime_statistics len
 
     val thm_with_defs = Symtab.lookup proofs id |> the |> snd
@@ -370,24 +374,25 @@ type ('a, 'b) context = {
     (* val  last_concl = skip_rule last_concl last_rule
    val _ = @{print} last_concl
    val result = skip_proving last_concl last_rule  ctxt thm_with_defs *)
+    val last_concl = get_concl #$ last actual_steps
    val result = if skip then @{thm ""} else Verit_Replay_Methods.discharge ctxt [thm_with_defs] last_concl
    val _ = @{print} ctxt5
   in
-    (result, (name_bindings_output, lines_left_output, state_output, smtlib_proof_output))
+    (result, (ctxt5, name_bindings_output, lines_left_output, state_output, smtlib_proof_output))
   end
 
 fun map_custom f l b = 
      case l of
      [] => [] |
      [x] => let 
-        val (thm_result, (name_bindings_output, lines_left_output, state_output, smtlib_proof_output)) = f x b false
+        val (thm_result, state as (ctxt, name_bindings_output, lines_left_output, state_output, smtlib_proof_output)) = f x b false
         in 
-          thm_result :: (map_custom f lines_left_output (name_bindings_output, lines_left_output, state_output, smtlib_proof_output))
+          thm_result :: (map_custom f lines_left_output state)
         end |
      x::_ => let 
-        val (thm_result, (name_bindings_output, lines_left_output, state_output, smtlib_proof_output)) = f x b true
+        val (thm_result, state as (ctxt, name_bindings_output, lines_left_output, state_output, smtlib_proof_output)) = f x b true
         in 
-          thm_result :: (map_custom f lines_left_output (name_bindings_output, lines_left_output, state_output, smtlib_proof_output))
+          thm_result :: (map_custom f lines_left_output state)
         end
 
 fun replay outer_ctxt context output =
@@ -399,8 +404,9 @@ fun replay outer_ctxt context output =
       val x = SMTLIB_Proof.empty_context ctxt typs (#terms context)
 
       val result = last #$ map_custom 
-           (fn line => fn (name_bindings, lines_left, state, smtlib_proof)  => fn skip => replay_helper outer_ctxt context [line] (name_bindings, lines_left, state, smtlib_proof) skip)
-           original_smt_proof (SMTLIB_Proof.empty_name_binding, output, (Symtab.empty, Symtab.empty, ctxt , [], Termtab.empty), x)
+           (fn line => fn (ctxt, name_bindings, lines_left, state, smtlib_proof)  => fn skip =>
+               replay_helper outer_ctxt context [line] (ctxt, name_bindings, lines_left, state, smtlib_proof) skip)
+           original_smt_proof (ctxt, SMTLIB_Proof.empty_name_binding, output, (Symtab.empty, Symtab.empty, ctxt , [], Termtab.empty), x)
            
 
      (* val (result, _) = replay_helper outer_ctxt context original_smt_proof (SMTLIB_Proof.empty_name_binding, output, (Symtab.empty, Symtab.empty, ctxt , [], Termtab.empty), x) false
