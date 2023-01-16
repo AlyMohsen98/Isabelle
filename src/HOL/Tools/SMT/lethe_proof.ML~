@@ -51,8 +51,8 @@ sig
   val parse: typ Symtab.table -> term Symtab.table -> string list ->
     Proof.context -> lethe_step list * Proof.context
   val parse_replay: typ Symtab.table -> term Symtab.table -> string list ->
-    Proof.context ->  SMTLIB_Proof.name_bindings -> string list 
-        -> lethe_replay_node list * Proof.context * SMTLIB_Proof.name_bindings * string list 
+    Proof.context ->  SMTLIB_Proof.name_bindings -> string list ->  ((string * (string * typ)) list, ''a) SMTLIB_Proof.context 
+        -> lethe_replay_node list * ((string * (string * typ)) list, ''a) SMTLIB_Proof.context * SMTLIB_Proof.name_bindings * string list 
 
   val step_prefix : string
   val input_rule: string
@@ -277,6 +277,7 @@ fun parse_raw_proof_steps (limit : string option) (ls : SMTLIB.tree list) (cx : 
            the size of the generated terms and therefore the reconstruction time*)
          let val (l, cx) = (fst oo SMTLIB_Proof.extract_and_update_name_bindings) t cx
             |> apsnd (SMTLIB_Proof.update_name_binding (name, SMTLIB.Sym id))
+             val _ = @{print} id
          in
            (*(mk_raw_node (id ^ lethe_def) lethe_def (SMTLIB.S [SMTLIB.Sym id, typ, l]) [] []
               (SMTLIB.S [SMTLIB.Sym "=", SMTLIB.Sym id, l]) [], cx)*)
@@ -370,9 +371,9 @@ fun parse_raw_proof_steps (limit : string option) (ls : SMTLIB.tree list) (cx : 
           let
             val (anchor_id, (anchor_args, (_, cx))) = (p, cx) |> (parse_anchor_step ##> parse_args)
             (* val x =  parse_raw_proof_steps (SOME anchor_id) l cx
-            val _ = @{print} x*)
+            val _ = @{print} x
             val _ = @{print} l
-            val _ = @{print} lines_input 
+            val _ = @{print} lines_input*) 
             val limit = (SOME anchor_id)
             val (subproof_semantic_unit, lines_after_subproof) = get_semantic_unit limit [] (tail_or_empty lines_input)
             (*val _ = @{print} subproof_semantic_unit
@@ -380,8 +381,8 @@ fun parse_raw_proof_steps (limit : string option) (ls : SMTLIB.tree list) (cx : 
              (*val (subproof, discharge_step :: remaining_proof, cx, _) = parse_raw_proof_steps limit l cx []*)
            val (subproof, x, cx, _) = parse_raw_proof_steps limit subproof_semantic_unit cx lines_after_subproof
             val discharge_step = hd x 
-            val _ = @{print} discharge_step
-            val _ = @{print} x
+            (*val _ = @{print} discharge_step
+            val _ = @{print} x*)
             val (curss, (_, cx)) = parse_normal_step (discharge_step, cx)
             val s = to_raw_node subproof (fst curss, anchor_args)
              (*val (rp, rl, cx, _) = parse_raw_proof_steps limit remaining_proof cx []
@@ -528,7 +529,6 @@ fun postprocess_proof compress ctxt step cx =
       val subproof_rewriter = fold (fn (t, t') => synctatic_rew_in_lhs_subst t t')
          subproof_rew
 
-      val _ = @{print} rule
       (*val _ = @{print} id
       val _ = @{print} rule
       val _ = @{print} args
@@ -609,7 +609,6 @@ fun postprocess_proof compress ctxt step cx =
         |> apfst (map (apsnd unsk_and_rewrite))
 
       (* fix step *)
-      (*val xy = Proof.goal (Proof.init (ctxt_of cx'))*)
       
       val _ = @{print} bounds
       val _ = @{print} id
@@ -815,12 +814,12 @@ local
         |> map remove_all_qm2
         |> map remove_pattern 
 
-  fun import_proof_and_post_process typs funs lines ctxt name_bindings_input lines_left_input=
+  fun import_proof_and_post_process typs funs lines ctxt name_bindings_input lines_left_input smtlib_proof =
     let
       val compress = SMT_Config.compress_verit_proofs ctxt
       val smtlib_lines_without_qm = parse_lines lines
       (*val _ = @{print} name_bindings_input*)
-      val (raw_steps, _, name_bindings_result, lines_left_output) =
+      val (raw_steps, _, name_bindings_output, lines_left_output) =
 (*        parse_raw_proof_steps NONE smtlib_lines_without_qm SMTLIB_Proof.empty_name_binding*)
         parse_raw_proof_steps NONE smtlib_lines_without_qm name_bindings_input lines_left_input
         (*val _ = @{print} (nth smtlib_lines_without_qm 0)*)
@@ -834,16 +833,18 @@ local
           in (step, (cx, cx')) end
         in uncurry (fold_map postprocess) (preprocess compress step (cx, cx')) end
       val step =
-        (empty_context ctxt typs funs, [])
+        (*(empty_context ctxt typs funs, [])*)
+        (smtlib_proof, [])
         |> fold_map process raw_steps
         |> (fn (steps, (cx, _)) => (flat steps, cx))
         |> compress? apfst combine_proof_steps
-    in (step, name_bindings_result, lines_left_output) end
+    in (step, name_bindings_output, lines_left_output) end
 in
 
 fun parse typs funs lines ctxt =
   let
-    val ((u, env), name_bindings_context, _) = import_proof_and_post_process typs funs lines ctxt SMTLIB_Proof.empty_name_binding lines
+    val empty_ctxt = empty_context ctxt typs funs
+    val ((u, env), name_bindings_context, _) = import_proof_and_post_process typs funs lines ctxt SMTLIB_Proof.empty_name_binding lines empty_ctxt
     val t = u
        |> remove_skolem_definitions_proof
        |> flat o (map linearize_proof)
@@ -853,12 +854,12 @@ fun parse typs funs lines ctxt =
     (map node_to_step t, ctxt_of env)
   end
 
-fun parse_replay typs funs lines ctxt name_bindings lines_left_input =
+fun parse_replay typs funs lines ctxt name_bindings lines_left_input smtlib_proof =
   let
-    val ((u, env), name_bindings_context, lines_left_output) = import_proof_and_post_process typs funs lines ctxt name_bindings lines_left_input
+    val ((u, env), name_bindings_output, lines_left_output) = import_proof_and_post_process typs funs lines ctxt name_bindings lines_left_input smtlib_proof
     val _ = (SMT_Config.verit_msg ctxt) (fn () => \<^print> u)
   in
-    (u, ctxt_of env, name_bindings_context, lines_left_output)
+    (u,  env, name_bindings_output, lines_left_output)
   end
 end
 

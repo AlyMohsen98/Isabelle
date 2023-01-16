@@ -926,7 +926,7 @@ lemma "(a::nat) + (b::nat) \<le> 3 \<Longrightarrow> a \<le> 3 \<and> b \<le> 3"
   done
 
 lemma "\<forall>x. P(x) \<and> Q(x) \<Longrightarrow> \<forall> x . (Q(x))"
-  supply [[smt_nat_as_int]] supply [[smt_trace,verit_compress_proofs=false]]
+  supply [[smt_nat_as_int,smt_debug_verit]] supply [[smt_trace,verit_compress_proofs=false]]
   apply (smt (verit))
   done
 

@@ -586,11 +586,14 @@ fun skolem_tac extractor thm1 thm2 ctxt thms t  =
       in map (fn v => (v, AList.lookup (op =) thm_names_with_var v)) var_order end
   in
     SMT_Replay_Methods.prove ctxt t (fn _ =>
+K (print_tac ctxt "stuff") THEN'
       K (unfold_tac ctxt ctxt_eq)
       THEN' rewrite_all_skolems thm2 ctxt (ordered_definitions ())
+THEN' K (print_tac ctxt "stuff 2") 
       THEN' (eqsubst_all ctxt (map (fn thm => thm RS sym) other))
       THEN_ALL_NEW TRY' (resolve_tac ctxt @{thms refl})
       THEN' K (unfold_tac ctxt ctxt_eq)
+THEN' K (print_tac ctxt "stuff 5") 
       THEN' TRY' (partial_simplify_tac ctxt (@{thms eq_commute})))
   end
 in
