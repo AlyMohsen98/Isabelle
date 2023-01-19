@@ -439,6 +439,9 @@ fun extract_skolem ([SMTLIB.Sym var, typ, choice]) = (var, typ, choice)
 *)
 fun preprocess compress step =
   let
+val _ = @{print} step
+val _ = @{print} compress
+
     fun expand_assms cs =
       map (fn t => case AList.lookup (op =) cs t of NONE => t | SOME a => a)
     fun expand_lonely_arguments (args as SMTLIB.S [SMTLIB.Sym "=", _, _]) = [args]
@@ -446,6 +449,9 @@ fun preprocess compress step =
 
     fun preprocess (Raw_Lethe_Node {id, rule, args, prems, concl, subproof, ...}) (cx, remap_assms)  =
       let
+      val _ = @{print} "rule"
+      val _ = @{print} rule
+
         val (skolem_names, stripped_args) = args
           |> (fn SMTLIB.S args => args)
           |> map
@@ -505,6 +511,7 @@ fun postprocess_proof compress ctxt step cx =
   let
     fun postprocess (Raw_Lethe_Node {id, rule, args, prems, declarations, concl, subproof}) (cx, rew) =
     let
+      val _ = @{print} step
       val _ = (SMT_Config.verit_msg ctxt) (fn () => @{print} ("id =", id, "concl =", concl))
 
       val args = extract_types_of_args args
@@ -528,6 +535,7 @@ fun postprocess_proof compress ctxt step cx =
         (map fst rebound_lhs_vars) rew
       val subproof_rewriter = fold (fn (t, t') => synctatic_rew_in_lhs_subst t t')
          subproof_rew
+      val _ = @{print} id
 
       (*val _ = @{print} id
       val _ = @{print} rule
@@ -835,12 +843,19 @@ local
           let val (step, cx) = postprocess_proof compress ctxt step cx
           in (step, (cx, cx')) end
         in uncurry (fold_map postprocess) (preprocess compress step (cx, cx')) end
-      val step =
+      
+val _ = @{print} "Lines: "
+val _ = @{print} (lines)
+val _ = @{print} (raw_steps)
+        
+val step =
         (*(empty_context ctxt typs funs, [])*)
         (smtlib_proof, [])
         |> fold_map process raw_steps
+|>  @{print} 
         |> (fn (steps, (cx, _)) => (flat steps, cx))
         |> compress? apfst combine_proof_steps
+val _ = @{print} (step)
     in (step, name_bindings_output, lines_left_output) end
 in
 

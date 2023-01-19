@@ -546,7 +546,10 @@ fun postprocess_proof compress ctxt step cx =
       val new_lhs_vars = map (fn (_, newvar, typ) => (newvar, typ)) extra_lhs_vars
 
       (* postprocess conclusion *)
+val _ = @{print} ("concl before", concl)
+val _ = @{print} ("concl rewritten", subproof_rewriter concl)
       val concl = SMTLIB_Isar.unskolemize_names ctxt (subproof_rewriter concl)
+val _ = @{print} ("concl final", concl)
 
       val _ = (SMT_Config.verit_msg ctxt) (fn () => \<^print> ("id =", id, "concl =", concl))
       val _ = (SMT_Config.verit_msg ctxt) (fn () => \<^print> ("id =", id, "cx' =", cx',
@@ -832,12 +835,17 @@ local
           let val (step, cx) = postprocess_proof compress ctxt step cx
           in (step, (cx, cx')) end
         in uncurry (fold_map postprocess) (preprocess compress step (cx, cx')) end
-      val step =
+      
+val _ = @{print} "Lines: "
+val _ = @{print} (lines)
+        
+val step =
         (*(empty_context ctxt typs funs, [])*)
         (smtlib_proof, [])
         |> fold_map process raw_steps
         |> (fn (steps, (cx, _)) => (flat steps, cx))
         |> compress? apfst combine_proof_steps
+val _ = @{print} (step)
     in (step, name_bindings_output, lines_left_output) end
 in
 

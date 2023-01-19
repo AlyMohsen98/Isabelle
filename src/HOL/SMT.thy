@@ -930,8 +930,16 @@ lemma "\<forall>x. P(x) \<and> Q(x) \<Longrightarrow> \<forall> x . (Q(x))"
   apply (smt (verit))
   done
 
+lemma "Q \<or> P \<Longrightarrow> (\<not> P \<and> Q) \<or> (\<not> Q \<and> P) \<or> (P \<and> Q)"
+  supply [[smt_nat_as_int,smt_debug_verit]] supply [[smt_trace,verit_compress_proofs=false]]
+  apply (smt (verit))
+  done
+
 lemma "(a::nat) + (b::nat) \<le> 3 \<Longrightarrow> a \<le> 3 \<and> b \<le> 3"
-  using add_leE supply [[smt_trace]] by (smt (verit))
+  using add_leE supply [[smt_trace, verit_compress_proofs=false]] by (smt (verit))
+
+
+lemma "(p \<or> q) \<and> \<not>p \<Longrightarrow> q"  supply [[ verit_compress_proofs=false]] by (smt (verit))
 
 
 end
