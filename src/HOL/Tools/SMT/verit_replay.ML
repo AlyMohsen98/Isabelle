@@ -371,11 +371,10 @@ type ('a, 'b) context = {
     (*val _ = @{print} assumed
     val _ = @{print} proofs_input*)
     val assumed = Symtab.merge (fn ((x1,x2),(y1,y2)) => let
-      in true end) (assumed, proofs_input)
-    val (state_output) = (*state to be carried on*)
+      in true end) (proofs_input, assumed)
+    val state_output as (proofs, stats, ctxt5, _, _) = (*state to be carried on*)
       fold ( (replay_step rewrite_rules ll_defs assumed [] [])) (map (fn (_,y) => y) flat_steps)
         ( (assumed, stats, ctxt4, concl_tranformation, global_transformation))
-    val  (proofs, stats, ctxt5, _, _) = state_output
     val total = Time.toMilliseconds (#elapsed (Timing.result start))
 (* val _ = @{print} actual_steps *)
 (* val _ = @{print} flat_steps *)
