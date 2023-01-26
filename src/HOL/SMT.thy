@@ -946,4 +946,8 @@ lemma "Q \<or> P \<Longrightarrow> (\<not> P \<and> Q) \<or> (\<not> Q \<and> P)
     supply [[smt_trace,verit_compress_proofs=false]] by (smt (verit)) 
 
 
+lemma "\<forall>x y::int. (x = 0 \<and> y = 1) \<longrightarrow> x \<noteq> y"
+  supply [[smt_trace=false, verit_compress_proofs=false]]
+  by (smt (verit))
+
 end

@@ -72,13 +72,9 @@ fun replay_thm method_for rewrite_rules ll_defs ctxt assumed unchanged_prems pre
       end
     val concl = concl
       |> Term.subst_free concl_transformation
-(* |> @{print} *)
       |> subst_only_free global_transformation
-(* |> @{print} *)
       |> post
-(* |> @{print} *)
       |> subst_only_free global_transformation
-(* |> @{print} *)
   in
     if rule = Lethe_Proof.input_rule then
       (case Symtab.lookup assumed id of
@@ -112,42 +108,16 @@ fun replay_theorem_step rewrite_rules ll_defs assumed inputs proof_prems
      subproof = (fixes, assms, input, subproof), concl, ...})
      (proofs, stats, ctxt0, concl_tranformation, global_transformation) =
   let
-(*    val _ = @{print} id
-   val _ = @{print} concl
-val _ = @{print} rule
-val _ = @{print} ("fixes", fixes)
-val _ = @{print} ("bounds", bounds)
- *)
-(* val _ = "veriT_sk0__skolem_definition"
-     |> Symtab.lookup proofs
-|> tap (fn x => @{print} ("checking def term", Option.map (apsnd (Thm.concl_of)) x))
+val _ = @{print} ("prems", prems)
 
-val _ = "veriT_sk0__skolem_definition"
-     |> Symtab.lookup proofs
-|> Option.map (apsnd (fn a => Proof_Context.export ctxt0 @{context} [a])) *)
-(* |> (fn x => @{print} ("checking def", x)) *)
     val (_, ctxt) = Variable.variant_fixes (map fst bounds) ctxt0
       |> (fn (names, ctxt) => (names,
         fold Variable.declare_term [SMTLIB_Isar.unskolemize_names ctxt concl] ctxt))
-
-(* val _ = "veriT_sk0__skolem_definition"
-     |> Symtab.lookup proofs
-|> tap (fn x => @{print} ("checking def term", Option.map (apsnd (Thm.concl_of)) x))
-val _ = "veriT_sk0__skolem_definition"
-     |> Symtab.lookup proofs
-|> tap (fn x => @{print} ("checking def term", Option.map (apsnd (Thm.concl_of)) x))
-|> Option.map (apsnd (fn a => Proof_Context.export ctxt @{context} [a]))
-|> (fn x => @{print} ("checking def 2", x)) *)
-(*val _ = @{print} "prems in replay_theorem_step"    
-val _ = @{print} prems*)
-(* val _ = @{print} ("concl = ",  concl) *)
-(*val _ = @{print} "proofs in replay_theorem_step"    
-val _ = @{print} proofs*)
     val (names, sub_ctxt) = Variable.variant_fixes (map fst fixes) ctxt
        ||> fold Variable.declare_term (map Free fixes)
     val export_vars = concl_tranformation @
        (ListPair.zip (map Free fixes, map Free (ListPair.zip (names, map snd fixes))))
-(* val _ = @{print} ("export_vars", export_vars) *)
+
     val post = let val thy = Proof_Context.theory_of (empty_simpset ctxt) in
         Raw_Simplifier.rewrite_term thy ((if Lethe_Proof.keep_raw_lifting rule then tl rewrite_rules else rewrite_rules)) []
         #> Object_Logic.atomize_term ctxt
@@ -199,30 +169,19 @@ val _ = "veriT_sk0__skolem_definition"
     val nthms' = (if Lethe_Proof.is_skolemization rule then prems else [])
       |> filter Lethe_Proof.is_lethe_def
       |> map_filter (Symtab.lookup proofs)
-
-(* val _ = @{print} ("prems = ",  map (apsnd Thm.concl_of) (nthms @ nthms')) *)
-(* val _ = @{print} ("proof_prems = ",  map (Thm.concl_of) (proof_prems)) *)
-(* val _ = @{print} ("local_inputs = ",  map (Thm.concl_of) (input @ inputs)) *)
     val args = map (Term.subst_free concl_tranformation o subst_only_free global_transformation) args
     val insts = Symtab.map (K (Term.subst_free concl_tranformation o subst_only_free global_transformation)) insts
     val proof_prems =
        if Lethe_Replay_Methods.requires_subproof_assms prems rule then proof_prems else []
     val local_inputs =
        (if Lethe_Replay_Methods.requires_local_input prems rule then input @ inputs else [])
-(* (* (* val _ = @{print}("exported local_inputs thm" , map (fn x => singleton (Proof_Context.export ctxt @{context}) x) local_inputs) *) *) *)
-(* (* (* val _ = @{print}("exported proof_prems thm" , map (fn x => singleton (Proof_Context.export ctxt @{context}) x) proof_prems) *) *) *)
-(* (* (* val _ = @{print}("exported nthms thm" , map (apsnd (fn x => singleton (Proof_Context.export ctxt @{context}) x)) nthms) *) *) *)
-(* (* (* val _ = @{print}("exported nthms'0 thm" , nthms') *) *) *)
-(* (* (* val _ = @{print}("exported nthms' thm" , map (apsnd (fn x => singleton (Proof_Context.export ctxt @{context}) x)) nthms') *) *) *)
     val replay = Timing.timing (replay_thm Verit_Replay_Methods.method_for rewrite_rules ll_defs
        ctxt assumed [] (proof_prems @ local_inputs) (nthms @ nthms') concl_tranformation
        global_transformation args insts)
 
-(* val _ = @{print} "test" *)
     val ({elapsed, ...}, thm) =
       SMT_Config.with_time_limit ctxt SMT_Config.reconstruction_step_timeout replay step
         handle Timeout.TIMEOUT _ => raise SMT_Failure.SMT SMT_Failure.Time_Out
-(* val _ = @{print} "step done" *)
     val stats' = Symtab.cons_list (rule, Time.toNanoseconds elapsed) stats
     val proofs = Symtab.update (id, (map fst bounds, thm)) proofs
   in (proofs, stats', ctxt, concl_tranformation, sub_global_rew) end
@@ -241,15 +200,8 @@ fun replay_definition_step rewrite_rules ll_defs _ _ _
       end
     val start0 = Timing.start ()
     val declaration = map (apsnd (rewrite o global_transformer)) raw_declarations
-(* val _ = @{print}("raw_decl", raw_declarations) *)
-(* val _ = @{print}("declaration", declaration) *)
-(* val _ = @{print}("test is_body", Variable.is_body ctxt) *)
-(* val _ = @{print}("test names_of", Variable.names_of ctxt) *)
-(* val _ = @{print}("test", Variable.variant_fixes ["veriT_sk0"] ctxt) *)
     val (names, ctxt) = Variable.variant_fixes (map fst declaration) ctxt
-(* |> @{print}   *)
        ||> fold Variable.declare_term (map Free (map (apsnd fastype_of) declaration))
-(* val _ = @{print}("names", names) *)
     val old_names = map Free (map (fn (a, b) => (a, fastype_of b)) declaration)
     val new_names = map Free (ListPair.zip (names, map (fastype_of o snd) declaration))
     fun update_mapping (a, b) tab = 
@@ -257,7 +209,6 @@ fun replay_definition_step rewrite_rules ll_defs _ _ _
           then Termtab.update_new (a, b) tab else tab
     val global_transformation = global_transformation 
      |> fold update_mapping (ListPair.zip (old_names, new_names))
-(* |> @{print}   *)
     val global_transformer = subst_only_free global_transformation
 
     val generate_definition =
@@ -268,9 +219,7 @@ fun replay_definition_step rewrite_rules ll_defs _ _ _
       #> Thm.cterm_of ctxt
     val decls = map generate_definition declaration
     val (defs, ctxt) = Assumption.add_assumes decls ctxt
-val _ = @{print}("defs", defs)
     val thms_with_old_name = ListPair.zip (map fst declaration, defs)
-|> @{print}
     val proofs = fold
       (fn (name, thm) => let in  Symtab.update (id, ([name], @{thm sym} OF [thm])) end)
       thms_with_old_name proofs
@@ -278,10 +227,6 @@ val _ = @{print}("defs", defs)
     val total = Time.toNanoseconds (#elapsed (Timing.result start0))
     val stats = Symtab.cons_list ("choice", total) stats
 
-val _ = "veriT_sk0__skolem_definition"
-     |> Symtab.lookup proofs
-|> Option.map (apsnd (fn a => Proof_Context.export ctxt @{context} [a]))
-|> (fn x => @{print} ("checking def", x))
   in (proofs, stats, ctxt, concl_tranformation, global_transformation) end
 
 
@@ -463,31 +408,13 @@ fun map_custom f l b =
         val (thm_result, state as (ctxt, name_bindings_output, lines_left_output, state_output, smtlib_proof_output)) = f x b false
 
 val (proofs_input, stats, context_input, concl_tranformation, global_transformation) =  (state_output)
-(* val _ = @{print} proofs_input *)
-val _ = "veriT_sk0__skolem_definition"
-     |> Symtab.lookup proofs_input
-|> tap (fn x => @{print} ("map_custom/checking def term", Option.map (apsnd (Thm.concl_of)) x))
-
-val _ = "veriT_sk0__skolem_definition"
-     |> Symtab.lookup (proofs_input)
-|> Option.map (apsnd (fn a => Proof_Context.export ctxt @{context} [a]))
-(* |> (fn x => @{print} ("map_custom/checking def", x)) *)
-
         in 
           thm_result :: (map_custom f lines_left_output state)
         end |
      x::_ => let 
         val (thm_result, state as (ctxt, name_bindings_output, lines_left_output, state_output, smtlib_proof_output)) = f x b true
 val (proofs_input, stats, context_input, concl_tranformation, global_transformation) =  (state_output)
-(* val _ = @{print} proofs_input *)
-val _ = "veriT_sk0__skolem_definition"
-     |> Symtab.lookup proofs_input
-(* |> tap (fn x => @{print} ("map_custom/checking def term", Option.map (apsnd (Thm.concl_of)) x)) *)
-
-val _ = "veriT_sk0__skolem_definition"
-     |> Symtab.lookup (proofs_input)
-|> Option.map (apsnd (fn a => Proof_Context.export ctxt @{context} [a]))
-(* |> (fn x => @{print} ("map_custom/checking def", x)) *)
+val _ = @{print} ("proof", proofs_input)
 
         in 
           thm_result :: (map_custom f lines_left_output state)
