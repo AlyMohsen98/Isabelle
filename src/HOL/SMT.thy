@@ -950,4 +950,32 @@ lemma "\<forall>x y::int. (x = 0 \<and> y = 1) \<longrightarrow> x \<noteq> y"
   supply [[smt_trace=false, verit_compress_proofs=false]]
   by (smt (verit))
 
+ lemma "\<forall>x::int. P x \<longrightarrow> (\<forall>y::int. P x \<or> P y)" 
+    supply [[smt_trace]] by (smt (verit)) 
+
+
+lemma "\<forall>x y::int. (x = 0 \<and> y = 1) \<longrightarrow> x \<noteq> y"
+  supply [[smt_trace=false]]
+  by (smt (verit))
+
+
+(* lemma "int (nat \<bar>x::int\<bar>) = \<bar>x\<bar>" *)
+    (* supply [[smt_trace]] by (smt (verit) int_nat_eq) *)
+
+(* definition prime_nat :: "nat \<Rightarrow> bool" where *)
+  (* "prime_nat p = (1 < p \<and> (\<forall>m. m dvd p --> m = 1 \<or> m = p))" *)
+
+(* lemma "prime_nat (4*m + 1) \<Longrightarrow> m \<ge> (1::nat)" by (smt (verit) prime_nat_def) *)
+
+(* lemma "i \<noteq> i1 \<and> i \<noteq> i2 \<Longrightarrow> (f (i1 := v1, i2 := v2)) i = f i" *)
+  (* using fun_upd_same fun_upd_apply by (smt (verit)) *)
+
+(* lemma "(if (\<forall>x::int. x < 0 \<or> x > 0) then -1 else 3) > (0::int)" by (smt (verit)) *)
+
+(* lemma "i \<noteq> i1 \<and> i \<noteq> i2 \<Longrightarrow> ((f (i1 := v1)) (i2 := v2)) i = f i" *)
+  (* using fun_upd_same fun_upd_apply by (smt (verit)) *)
+
+(* lemma "le = (\<le>) \<Longrightarrow> le (3::int) 42" by (smt (verit)) *)
+(* lemma "map (\<lambda>i::int. i + 1) [0, 1] = [1, 2]" by (smt (verit) list.map) *)
+
 end
