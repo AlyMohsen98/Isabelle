@@ -354,49 +354,31 @@ fun parse_raw_proof_steps (limit : string option) (ls : SMTLIB.tree list) (cx : 
     fun tail_or_empty [] = []
       | tail_or_empty l = tl l
   
-    fun get_semantic_unit _     c [] cx (inner_proof, position) = (c,[],cx,  (inner_proof, position))
-      | get_semantic_unit limit c (x::xs) cx (inner_proof, position) = let val _ = @{print} ("parsed line",x) val [parsed_line] = parse_lines [x] in 
-          (* if at_discharge limit parsed_line then (c @ [parsed_line],xs) else get_semantic_unit limit (c @ [parsed_line]) xs end *)
+    fun get_semantic_unit _     c []      cx (inner_proof, position) = (c,[],cx,  (inner_proof, position))
+      | get_semantic_unit limit c (x::xs) cx (inner_proof, position) = let  val [parsed_line] = parse_lines [x] in 
           case step_kind [parsed_line] of
       (ANCHOR, p, l) =>
           let
-
-(* fun raw_node_with_subproof (s as Raw_Lethe_Node {id, rule, args, prems, declarations, concl, ...}) inner_subproof = *)
-(* fun mk_raw_node id rule args prems declarations concl subproof = *)
-(* fun mk_empty_raw_node () = *)
-(* fun is_empty_raw_node (s as Raw_Lethe_Node {id, ...}) = id = "EMPTY" *)
-
-val _ = @{print} ("inner anchor name binding input", cx)
             val (anchor_id, (anchor_args, (_, cx))) = (p, cx) |> (parse_anchor_step ##> parse_args) 
-val _ = @{print} ("inner anchor name binding input after parse anchor", cx)
-val _ = @{print} ("anchor_args after parse anchor", anchor_args)
-val _ = @{print} ("xs", xs)
             val inner_limit = (SOME anchor_id)
-            val (subproof_semantic_unit, lines_after_subproof,cx, (inner_proof_output, position_output)) = get_semantic_unit inner_limit [] (xs) cx (mk_empty_raw_node (), 0)
-             val (subproof, xx, cx, _) = parse_raw_proof_steps inner_limit subproof_semantic_unit cx xs
-val _ = @{print} ("inner anchor name binding output", cx)
-val _ = @{print} ("inner subproof_semantic_unit", subproof_semantic_unit)
-val _ = @{print} ("inner subproof", subproof)
-val _ = @{print} ("inner lines_after_subproof", lines_after_subproof)
-val _ = @{print} ("inner x", xx)
-             val discharge_step = hd xx
-             val (curss, (_, cx)) = parse_normal_step (discharge_step, cx)
-             val s = to_raw_node subproof (fst curss, anchor_args)
-             (* val (rp, rl, cx, _) = parse_raw_proof_steps limit (tail_or_empty xx) cx [] *)
-val _ = @{print} ("inner s", s)
-(* val _ = @{print} ("inner rp", rp) *)
-val _ = @{print} ("last inner name bindings", cx)
-val _ = @{print} (" insert_at [] 1 0", insert_at [] 1 0)
-val s = if is_empty_raw_node inner_proof_output then s else raw_node_with_subproof s (insert_at (get_subproof s) inner_proof_output  position_output)
-(* val _ = @{print} ("end", lines_after_subproof) *)
-          in  get_semantic_unit limit (c ) lines_after_subproof cx  (s, position) end
-      | _ => if at_discharge limit parsed_line then (c @ [parsed_line],xs, cx, (inner_proof, position)) 
-                else get_semantic_unit limit (c @ [parsed_line]) xs cx  (inner_proof, (if is_empty_raw_node inner_proof then position + 1 else position)) end
+            val (subproof_semantic_unit, lines_after_subproof,cx, (inner_proof_output, position_output)) 
+                = get_semantic_unit inner_limit [] (xs) cx (mk_empty_raw_node (), 0)
+            val (subproof, discharge_step :: _, cx, _) = parse_raw_proof_steps inner_limit subproof_semantic_unit cx xs
+            val (curss, (_, cx)) = parse_normal_step (discharge_step, cx)
+            val s = to_raw_node subproof (fst curss, anchor_args)
+            val s = if is_empty_raw_node inner_proof_output then s 
+                else raw_node_with_subproof s (insert_at (get_subproof s) inner_proof_output  position_output)
+          in  get_semantic_unit limit c lines_after_subproof cx  (s, position) end
+      | _ =>let  
+             val (_, (_, cx)) =  (parsed_line, cx)
+                |> parse_normal_step in if at_discharge limit parsed_line then (c @ [parsed_line],xs, cx, (inner_proof, position))
+                else get_semantic_unit limit (c @ [parsed_line]) xs cx  (inner_proof, 
+                      (if is_empty_raw_node inner_proof then position + 1 else position)) end end
   in
     case step_kind ls of
         (NO_STEP, _, _) => ([],[], cx, [])
       | (NORMAL_STEP, p, l) =>
-          if at_discharge limit p then  let in ([], ls, cx, tail_or_empty lines_input) end else
+          if at_discharge limit p then ([], ls, cx, tail_or_empty lines_input) else
             let
              (*ignores content of "discharge": Isabelle is keeping track of it via the context*)
             
@@ -417,36 +399,16 @@ val s = if is_empty_raw_node inner_proof_output then s else raw_node_with_subpro
       | (ANCHOR, p, l) =>
           let
             val (anchor_id, (anchor_args, (_, cx))) = (p, cx) |> (parse_anchor_step ##> parse_args)
-            (* val x =  parse_raw_proof_steps (SOME anchor_id) l cx
-            val _ = @{print} x
-            val _ = @{print} l
-            val _ = @{print} lines_input*) 
             val limit = (SOME anchor_id)
-val _ = @{print} ("outer cx", cx)
-val _ = @{print} ("(tail_or_empty lines_input)", (tail_or_empty lines_input))
-            val (subproof_semantic_unit, lines_after_subproof, cx, (inner_proof_output, position_output)) = get_semantic_unit limit [] (tail_or_empty lines_input) cx ((mk_empty_raw_node ()), 0)
-            (*val _ = @{print} subproof_semantic_unit
-            val _ = @{print} lines_after_subproof*)
-             (*val (subproof, discharge_step :: remaining_proof, cx, _) = parse_raw_proof_steps limit l cx []*)
-
-           val (subproof, x, cx, _) = parse_raw_proof_steps limit subproof_semantic_unit cx lines_after_subproof
-val _ = @{print} ("outer subproof_semantic_unit", subproof_semantic_unit)
-            (* val _ = @{print} x *)
-            (* val _ = @{print} lines_after_subproof *)
-            (* val _ = @{print} ("subproof semantic unit: ", subproof_semantic_unit) *)
-
-            val discharge_step = hd x 
-            (*val _ = @{print} discharge_step
-            val _ = @{print} x*)
+            val (subproof_semantic_unit, lines_after_subproof, cx, (inner_proof_output, position_output)) 
+                = get_semantic_unit limit [] (tail_or_empty lines_input) cx ((mk_empty_raw_node ()), 0)
+            val (subproof, x, cx, _) = parse_raw_proof_steps limit subproof_semantic_unit cx lines_after_subproof
+            val discharge_step = hd x
             val (curss, (_, cx)) = parse_normal_step (discharge_step, cx)
             val s = to_raw_node subproof (fst curss, anchor_args)
-             (* val (rp, rl, cx, _) = parse_raw_proof_steps limit remaining_proof cx [] *)
-           val (rp, rl, cx, _) = parse_raw_proof_steps limit (tail_or_empty x) cx []
-val _ = @{print} ("outer s", s)
-val _ = @{print} ("outer rp", rp)
-val _ = @{print} ("inner_proof_output", inner_proof_output)
-val _ = @{print} ("position_output", position_output)
-val s = if is_empty_raw_node inner_proof_output then s else raw_node_with_subproof s (insert_at (get_subproof s) inner_proof_output  position_output)
+            val (rp, rl, cx, _) = parse_raw_proof_steps limit (tail_or_empty x) cx []
+            val s = if is_empty_raw_node inner_proof_output then s 
+                else raw_node_with_subproof s (insert_at (get_subproof s) inner_proof_output  position_output)
           in (s :: rp, rl, cx, lines_after_subproof) end
       | (SKOLEM, p, l) =>
           let
@@ -681,8 +643,6 @@ val _ = @{print} ("concl rewritten", subproof_rewriter concl) *)
       
       val _ = @{print} ("bounds",bounds)
       val _ = @{print} ("id",id)
-      (* val _ = @{print} prems *)
-      (* val _ = @{print} globally_bound_vars  *)
       val _ = if bounds <> [] then raise (Fail "found dangling variable in concl") else ()
       val skolem_defs = (if is_skolemization rule
          then map (fn id => id ^ lethe_def) (skolems_introduced_by_rule (SMTLIB.S (map fst args))) else [])
@@ -887,32 +847,16 @@ local
     let
       val compress = SMT_Config.compress_verit_proofs ctxt
       val smtlib_lines_without_qm = parse_lines lines
-      val _ = @{print} ("name_bindings_input before parse raw proof", name_bindings_input)
       val (raw_steps, _, name_bindings_output, lines_left_output) =
 (*        parse_raw_proof_steps NONE smtlib_lines_without_qm SMTLIB_Proof.empty_name_binding*)
         parse_raw_proof_steps NONE smtlib_lines_without_qm name_bindings_input lines_left_input
-      val _ = @{print} ("name_bindings_output after parse raw proof", name_bindings_output)
-      val _ = @{print} ("raw_steps", raw_steps)
-      val _ = @{print} ("v1", SMTLIB_Proof.lookup_binding smtlib_proof "v1")
-      val _ = @{print} ("v0", SMTLIB_Proof.lookup_binding smtlib_proof "v0")
-      val _ = @{print} ("smtlib_proof", smtlib_proof)
-        (*val _ = @{print} (nth smtlib_lines_without_qm 0)*)
-      (*val _ = @{print} "raw_steps head"
-      val _ = @{print} (nth raw_steps 2)
-      val _ = @{print} ("smt head")
-      val _ = @{print} (nth smtlib_lines_without_qm 2)*)
-(* val {ctxt, ...} = smtlib_proof *)
+      val _ = @{print} ("raw_steps: ", raw_steps)
       fun process step (cx, cx') =
         let fun postprocess step (cx, cx') =
           let val (step, cx) = postprocess_proof compress ctxt step cx
           in (step, (cx, cx')) end
         in uncurry (fold_map postprocess) (preprocess compress step (cx, cx')) end
-      
-(* val _ = @{print} "Lines: "
-val _ = @{print} (lines)
-val _ = @{print} (raw_steps)
- *)        
-val step =
+      val step =
         (*(empty_context ctxt typs funs, [])*)
         (smtlib_proof, [])
         |> fold_map process raw_steps
@@ -926,7 +870,7 @@ in
 fun parse typs funs lines ctxt =
   let
     val empty_ctxt = empty_context ctxt typs funs
-    val ((u, env), name_bindings_context, _) = import_proof_and_post_process typs funs lines ctxt SMTLIB_Proof.empty_name_binding lines empty_ctxt
+    val ((u, env), _, _) = import_proof_and_post_process typs funs lines ctxt SMTLIB_Proof.empty_name_binding lines empty_ctxt
     val t = u
        |> remove_skolem_definitions_proof
        |> flat o (map linearize_proof)

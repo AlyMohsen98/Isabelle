@@ -108,7 +108,6 @@ fun replay_theorem_step rewrite_rules ll_defs assumed inputs proof_prems
      subproof = (fixes, assms, input, subproof), concl, ...})
      (proofs, stats, ctxt0, concl_tranformation, global_transformation) =
   let
-val _ = @{print} ("prems", prems)
 
     val (_, ctxt) = Variable.variant_fixes (map fst bounds) ctxt0
       |> (fn (names, ctxt) => (names,
@@ -413,7 +412,6 @@ val (proofs_input, stats, context_input, concl_tranformation, global_transformat
      x::_ => let 
         val (thm_result, state as (ctxt, name_bindings_output, lines_left_output, state_output, smtlib_proof_output)) = f x b true
 val (proofs_input, stats, context_input, concl_tranformation, global_transformation) =  (state_output)
-val _ = @{print} ("proof", proofs_input)
 
         in 
           thm_result :: (map_custom f lines_left_output state)
