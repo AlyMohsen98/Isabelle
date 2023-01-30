@@ -393,7 +393,7 @@ type ('a, 'b) context = {
    val _ = @{print} last_concl
    val result = skip_proving last_concl last_rule  ctxt thm_with_defs *)
     val last_concl = get_concl #$ last actual_steps
-   val result = if skip then @{thm ""} else Verit_Replay_Methods.discharge ctxt [thm_with_defs] last_concl
+   val result = if skip then @{thm ""} else Verit_Replay_Methods.discharge ctxt5 [thm_with_defs] last_concl
    (* val _ = @{print} ctxt5 *)
   in
     (result, (ctxt5, name_bindings_output, lines_left_output, state_output, smtlib_proof_output))
@@ -401,20 +401,19 @@ type ('a, 'b) context = {
 
 fun map_custom f l b = 
      case l of
-     [] => [] |
      [x] => let 
         val (thm_result, state as (ctxt, name_bindings_output, lines_left_output, state_output, smtlib_proof_output)) = f x b false
 
 val (proofs_input, stats, context_input, concl_tranformation, global_transformation) =  (state_output)
         in 
-          thm_result :: (map_custom f lines_left_output state)
+          thm_result
         end |
      x::_ => let 
         val (thm_result, state as (ctxt, name_bindings_output, lines_left_output, state_output, smtlib_proof_output)) = f x b true
 val (proofs_input, stats, context_input, concl_tranformation, global_transformation) =  (state_output)
 
         in 
-          thm_result :: (map_custom f lines_left_output state)
+          map_custom f lines_left_output state
         end
 
 fun replay outer_ctxt context output =
@@ -425,8 +424,13 @@ fun replay outer_ctxt context output =
 
       val typs = get_typs context
       val x = SMTLIB_Proof.empty_context ctxt typs (#terms context)
-
+(* 
       val result = last #$ map_custom 
+           (fn line => fn state  => fn skip =>
+               replay_helper outer_ctxt context [line] state skip)
+           original_smt_proof (outer_ctxt, SMTLIB_Proof.empty_name_binding, output, (Symtab.empty, Symtab.empty, outer_ctxt , [], Termtab.empty), x)
+            *)
+      val result = map_custom 
            (fn line => fn state  => fn skip =>
                replay_helper outer_ctxt context [line] state skip)
            original_smt_proof (outer_ctxt, SMTLIB_Proof.empty_name_binding, output, (Symtab.empty, Symtab.empty, outer_ctxt , [], Termtab.empty), x)

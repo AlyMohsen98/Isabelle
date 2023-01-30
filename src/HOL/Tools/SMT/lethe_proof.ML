@@ -396,6 +396,17 @@ fun parse_raw_proof_steps (limit : string option) (ls : SMTLIB.tree list) (cx : 
               val (rp, rl, cx, _) = parse_raw_proof_steps limit l cx []
           in (s :: rp, rl, cx, tail_or_empty lines_input) end
       | (ASSUME, p, l) =>
+
+(* 
+          let
+            val (id, t :: []) = p
+              |> get_id
+            val ((t, cx), _) = SMTLIB_Proof.extract_and_update_name_bindings t cx
+            val s = mk_raw_node id input_rule (SMTLIB.S []) [] [] t []
+            val (rp, rl, cx) = parse_raw_proof_steps limit l cx
+          in (s :: rp, rl, cx) end *)
+
+
           let
             val (id, t :: []) = p
               |> get_id

@@ -369,6 +369,14 @@ fun parse_raw_proof_steps (limit : string option) (ls : SMTLIB.tree list) (cx : 
             val s = if is_empty_raw_node inner_proof_output then s 
                 else raw_node_with_subproof s (insert_at (get_subproof s) inner_proof_output  position_output)
           in  get_semantic_unit limit c lines_after_subproof cx  (s, position) end
+      | (ASSUME, p, l) => 
+        let
+            val (_, t :: []) = p
+              |> get_id
+            val ((_, cx), _) = SMTLIB_Proof.extract_and_update_name_bindings t cx
+             in if at_discharge limit parsed_line then (c @ [parsed_line],xs, cx, (inner_proof, position))
+                else get_semantic_unit limit (c @ [parsed_line]) xs cx  (inner_proof, 
+                      (if is_empty_raw_node inner_proof then position + 1 else position)) end
       | _ =>let  
              val (_, (_, cx)) =  (parsed_line, cx)
                 |> parse_normal_step in if at_discharge limit parsed_line then (c @ [parsed_line],xs, cx, (inner_proof, position))

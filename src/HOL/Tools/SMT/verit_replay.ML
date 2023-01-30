@@ -351,7 +351,6 @@ type ('a, 'b) context = {
         (Symtab.update (name, ([], thm)) assumed, stats)
       end)
       used_rew_js (assumed, Symtab.cons_list ("parsing", parsing_time) stats)
-
     val ctxt4 =
       ctxt3
       |> put_simpset (SMT_Replay.make_simpset ctxt3 [])
@@ -366,7 +365,6 @@ type ('a, 'b) context = {
     fun blockwise f (i, x) (next, y) =
       (if i > next then print_runtime_statistics i else ();
        (if i > next then i + 10 else next, f x y))
-    
     (*val _ = @{print} assumed
     val _ = @{print} proofs_input*)
     val assumed = Symtab.merge (fn ((x1,x2),(y1,y2)) => let
