@@ -971,7 +971,8 @@ lemma "(if (\<forall>x::int. x < 0 \<or> x > 0) then -1 else 3) > (0::int)"
  lemma "i \<noteq> i1 \<and> i \<noteq> i2 \<Longrightarrow> ((f (i1 := v1)) (i2 := v2)) i = f i" 
    using fun_upd_same fun_upd_apply by (smt (verit))
 
-  lemma "le = (\<le>) \<Longrightarrow> le (3::int) 42" supply [[smt_trace]] by (smt (verit))  
+lemma "le = (\<le>) \<Longrightarrow> le (0::int) 1"
+  supply [[smt_trace,ML_print_depth=1000]] by (smt (verit))  
  (* lemma "map (\<lambda>i::int. i + 1) [0, 1] = [1, 2]" by (smt (verit) list.map)  *)
 
 end
