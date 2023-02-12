@@ -669,8 +669,6 @@ val _ = @{print} ("concl rewritten", subproof_rewriter concl) *)
 
       val step = mk_replay_node id normalized_rule rule_args fixed_prems subproof_assms concl
         [] insts declarations (bound_tvars, subproof_assms, extra_assms2, fixed_subproof)
-
-
     in
        (step, (cx', rew))
     end

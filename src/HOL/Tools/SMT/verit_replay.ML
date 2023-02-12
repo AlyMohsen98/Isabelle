@@ -41,40 +41,43 @@ fun under_fixes f unchanged_prems (prems, nthms) names args insts decls (concl, 
 
 
 (** Replaying **)
-
-(* Remove the "__" suffix for newly introduced variables (Skolems). It is not clear why "__" is
-   generated also for abstraction variables, but this is repaired here. *)
-fun unskolemize_names ctxt =
-  Term.map_abs_vars (perhaps (try Name.dest_skolem))
-  #> Term.map_aterms (perhaps (try (fn Free (s, T) =>
-    Free (s |> not (Variable.is_fixed ctxt s) ? Name.dest_skolem, T))))
-
-
-
 fun replay_thm method_for rewrite_rules ll_defs ctxt assumed unchanged_prems prems nthms
     concl_transformation global_transformation args insts
     (Lethe_Proof.Lethe_Replay_Node {id, rule, concl, bounds, declarations = decls, ...}) =
   let
+val _ =  @{print} ("concl =", Thm.cterm_of ctxt concl)
+val _ =  @{print} ("replay_thm/uu =", Thm.cterm_of ctxt (Free ("uu", @{typ int} --> @{typ int} --> @{typ int})))
+
+val _ = @{print} ( Lethe_Proof.keep_raw_lifting rule, ll_defs)
     val _ = SMT_Config.verit_msg ctxt (fn () => \<^print> id)
     val rewrite = let val thy = Proof_Context.theory_of (empty_simpset ctxt) in
         Raw_Simplifier.rewrite_term thy rewrite_rules []
+#> @{print}
         #> not (null ll_defs andalso Lethe_Proof.keep_raw_lifting rule) ? SMTLIB_Isar.unlift_term ll_defs
+#> @{print}
       end
     val rewrite_concl = if Lethe_Proof.keep_app_symbols rule then
           filter (curry Term.could_unify (Thm.concl_of @{thm SMT.fun_app_def}) o Thm.concl_of) rewrite_rules
         else rewrite_rules
+val _ = @{print} ("ll_defs", map (Thm.cterm_of ctxt) ll_defs)
     val post = let val thy = Proof_Context.theory_of (empty_simpset ctxt) in
         Raw_Simplifier.rewrite_term thy rewrite_concl []
+#> tap (fn t => @{print} (Thm.cterm_of ctxt t))
         #> Object_Logic.atomize_term ctxt
+#> tap (fn t => @{print} ("after atomize_term", Thm.cterm_of ctxt t))
         #> not (null ll_defs) ? SMTLIB_Isar.unlift_term ll_defs
-        #> unskolemize_names ctxt
+#> tap (fn t => @{print} ("after unlifting", Thm.cterm_of ctxt t))
+        #> SMTLIB_Isar.unskolemize_names ctxt
         #> HOLogic.mk_Trueprop
       end
     val concl = concl
+|> tap (fn t => @{print} (Thm.cterm_of ctxt t))
       |> Term.subst_free concl_transformation
+|> tap (fn t => @{print} (Thm.cterm_of ctxt t))
       |> subst_only_free global_transformation
+|> tap (fn t => @{print} (Thm.cterm_of ctxt t))
       |> post
-      |> subst_only_free global_transformation
+|> tap (fn t => @{print} (Thm.cterm_of ctxt t))
   in
     if rule = Lethe_Proof.input_rule then
       (case Symtab.lookup assumed id of
@@ -161,10 +164,6 @@ val _ = "veriT_sk0__skolem_definition"
       |> filter_out Lethe_Proof.is_lethe_def
       |> map (apsnd export_thm) o map_filter (Symtab.lookup (if (null subproof) then proofs else proofs'))
 
-val _ = "veriT_sk0__skolem_definition"
-     |> Symtab.lookup proofs
-|> Option.map (apsnd (fn a => Proof_Context.export ctxt @{context} [a]))
-(* |> (fn x => @{print} ("checking def", x)) *)
     val nthms' = (if Lethe_Proof.is_skolemization rule then prems else [])
       |> filter Lethe_Proof.is_lethe_def
       |> map_filter (Symtab.lookup proofs)
@@ -283,7 +282,9 @@ type ('a, 'b) context = {
   typs: typ Symtab.table,
   funs: term Symtab.table,
   extra: 'a} *)
+val _ =  @{print} ("orig_ctxt uu =", Thm.cterm_of orig_ctxt (Free ("uu", @{typ int} --> @{typ int} --> @{typ int})))
 
+val _ =  @{print} ("uu =", Thm.cterm_of ctxt (Free ("uu", @{typ int} --> @{typ int} --> @{typ int})))
     val typs = #typs smtlib_proof_input
     val terms = #funs smtlib_proof_input
 
@@ -418,8 +419,6 @@ fun replay outer_ctxt context output =
      let 
       val original_smt_proof = output
       val ctxt  = get_ctxt context
-(* val _ = @{print}("test is_body", Variable.is_body ctxt) *)
-
       val typs = get_typs context
       val x = SMTLIB_Proof.empty_context ctxt typs (#terms context)
 (* 
@@ -431,7 +430,7 @@ fun replay outer_ctxt context output =
       val result = map_custom 
            (fn line => fn state  => fn skip =>
                replay_helper outer_ctxt context [line] state skip)
-           original_smt_proof (outer_ctxt, SMTLIB_Proof.empty_name_binding, output, (Symtab.empty, Symtab.empty, outer_ctxt , [], Termtab.empty), x)
+           original_smt_proof (ctxt, SMTLIB_Proof.empty_name_binding, output, (Symtab.empty, Symtab.empty, ctxt , [], Termtab.empty), x)
            
 
      (* val (result, _) = replay_helper outer_ctxt context original_smt_proof (SMTLIB_Proof.empty_name_binding, output, (Symtab.empty, Symtab.empty, ctxt , [], Termtab.empty), x) false

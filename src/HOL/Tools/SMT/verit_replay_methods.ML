@@ -202,7 +202,7 @@ fun with_tracing rule method ctxt thms args insts decls t =
 (* val _ = @{print} "end of tracing, applying method" *)
   in method ctxt thms args insts decls t end
 
-  fun method_for rule = with_tracing rule (choose (@{print}(verit_rule_of rule)))
+fun method_for rule = with_tracing rule (choose (verit_rule_of rule))
 
 fun discharge ctxt [thm] t =
   SMT_Replay_Methods.prove ctxt t (fn _ =>
