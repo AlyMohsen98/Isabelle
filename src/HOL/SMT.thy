@@ -971,7 +971,13 @@ lemma "(if (\<forall>x::int. x < 0 \<or> x > 0) then -1 else 3) > (0::int)"
  lemma "i \<noteq> i1 \<and> i \<noteq> i2 \<Longrightarrow> ((f (i1 := v1)) (i2 := v2)) i = f i" 
    using fun_upd_same fun_upd_apply by (smt (verit))
 
-  lemma "le = (\<le>) \<Longrightarrow> le (3::int) 42" supply [[smt_trace]] by (smt (verit))  
+(* lemma "le = (\<le>) \<Longrightarrow> le (3::int) 42" supply [[smt_trace]] by (smt (verit))   *)
+
+declare [[smt_nat_as_int]]
+
+definition prime_nat :: "nat \<Rightarrow> bool" where
+  "prime_nat p = (1 < p \<and> (\<forall>m. m dvd p --> m = 1 \<or> m = p))"
+lemma "prime_nat (4*m + 1) \<Longrightarrow> m \<ge> (1::nat)" supply [[smt_trace]] by (smt (verit) prime_nat_def)
  (* lemma "map (\<lambda>i::int. i + 1) [0, 1] = [1, 2]" by (smt (verit) list.map)  *)
 
 end

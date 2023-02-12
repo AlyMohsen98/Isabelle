@@ -236,18 +236,8 @@ lemma
 shows False
   using assms by (smt (verit))
 
-lemma "\<forall>x::int. P x \<longrightarrow> (\<forall>y::int. P x \<or> P y)"
+lemma "\<forall>x::int. P x \<longrightarrow> (\<forall>y::int. P x \<or> P y)" 
   by (smt (verit))
-
- lemma "(p \<or> q) \<and> \<not>p \<Longrightarrow> q"  supply [[smt_trace]] by (smt (verit))
-
-
-lemma "\<forall>x::int. P x \<longrightarrow> (\<forall>y::int. P x \<or> P y)"
-   supply [[smt_trace]] by (smt (verit))
-
-
- lemma "\<forall>x::int. P x \<longrightarrow> (\<forall>y::int. P x \<or> P y)" 
-    supply [[smt_trace]] by (smt (verit)) 
 
 lemma
   assumes "(\<forall>x y. P x y = x)"

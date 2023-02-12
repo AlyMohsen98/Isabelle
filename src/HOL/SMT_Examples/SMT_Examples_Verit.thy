@@ -356,7 +356,7 @@ lemma "int (nat \<bar>x::int\<bar>) = \<bar>x\<bar>" by (smt (verit) int_nat_eq)
 definition prime_nat :: "nat \<Rightarrow> bool" where
   "prime_nat p = (1 < p \<and> (\<forall>m. m dvd p --> m = 1 \<or> m = p))"
 
-lemma "prime_nat (4*m + 1) \<Longrightarrow> m \<ge> (1::nat)" by (smt (verit) prime_nat_def)
+lemma "prime_nat (4*m + 1) \<Longrightarrow> m \<ge> (1::nat)" supply [[smt_trace]] by (smt (verit) prime_nat_def)
 
 lemma "2 * (x::nat) \<noteq> 1" 
   by (smt (verit))

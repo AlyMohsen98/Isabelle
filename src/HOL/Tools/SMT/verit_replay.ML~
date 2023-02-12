@@ -70,11 +70,22 @@ fun replay_thm method_for rewrite_rules ll_defs ctxt assumed unchanged_prems pre
         #> unskolemize_names ctxt
         #> HOLogic.mk_Trueprop
       end
+  (* val _ = @{print} "concl 1" *)
+  (* val _ = @{print} concl   *)
+  (* val _ = @{print} "extra" *)
+  (* val _ = @{print} concl_transformation *)
+  (* val _ = @{print} global_transformation *)
+
+
     val concl = concl
       |> Term.subst_free concl_transformation
       |> subst_only_free global_transformation
       |> post
       |> subst_only_free global_transformation
+
+  (* val _ = @{print} "concl 2" *)
+  (* val _ = @{print} concl *)
+
   in
     if rule = Lethe_Proof.input_rule then
       (case Symtab.lookup assumed id of
@@ -108,7 +119,8 @@ fun replay_theorem_step rewrite_rules ll_defs assumed inputs proof_prems
      subproof = (fixes, assms, input, subproof), concl, ...})
      (proofs, stats, ctxt0, concl_tranformation, global_transformation) =
   let
-
+  (* val _ = @{print} "step" *)
+  (* val _ = @{print} step *)
     val (_, ctxt) = Variable.variant_fixes (map fst bounds) ctxt0
       |> (fn (names, ctxt) => (names,
         fold Variable.declare_term [SMTLIB_Isar.unskolemize_names ctxt concl] ctxt))
@@ -177,10 +189,14 @@ val _ = "veriT_sk0__skolem_definition"
     val replay = Timing.timing (replay_thm Verit_Replay_Methods.method_for rewrite_rules ll_defs
        ctxt assumed [] (proof_prems @ local_inputs) (nthms @ nthms') concl_tranformation
        global_transformation args insts)
-
+ (* val _ = @{print} "test 1"  *)
+ (* val _ = @{print} ("replay",replay) *)
+ val _ = @{print} ("step 222222", step)
+ (* val _ = @{print} ("ctxt",ctxt) *)
     val ({elapsed, ...}, thm) =
       SMT_Config.with_time_limit ctxt SMT_Config.reconstruction_step_timeout replay step
         handle Timeout.TIMEOUT _ => raise SMT_Failure.SMT SMT_Failure.Time_Out
+ val _ = @{print} "test 222321312"  
     val stats' = Symtab.cons_list (rule, Time.toNanoseconds elapsed) stats
     val proofs = Symtab.update (id, (map fst bounds, thm)) proofs
   in (proofs, stats', ctxt, concl_tranformation, sub_global_rew) end
@@ -250,7 +266,7 @@ fun replay_step rewrite_rules ll_defs assumed inputs proof_prems
   (step as Lethe_Proof.Lethe_Replay_Node {rule, id, concl, ...}) state = let
    (* val _ = @{print} id *)
    (* val _ = @{print} concl *)
-(* val _ = @{print} rule *)
+ (* val _ = @{print} ("step 11", step) *)
 
   in
     if rule = Lethe_Proof.lethe_def
@@ -301,12 +317,13 @@ type ('a, 'b) context = {
     (*val _ = @{print} name_bindings_input*)
     val (actual_steps, smtlib_proof_output, name_bindings_output, lines_left_output) =
       Lethe_Proof.parse_replay typs terms output context_input name_bindings_input lines_left_input smtlib_proof_input
+    (* val ctxt2 = #ctxt smtlib_proof_output *)
     val ctxt2 = ctxt
     (*val _ = @{print} name_bindings_input
     val _ = @{print} output
     val _ = @{print} (actual_steps, ctxt2)*)
     val parsing_time = Time.toNanoseconds (#elapsed (Timing.result start0))
-
+ val _ = @{print} ("xxx 11")
     fun step_of_assume (j, (_, th)) =
       Lethe_Proof.Lethe_Replay_Node {
         id = SMTLIB_Interface.assert_name_of_role_and_index SMT_Util.Axiom (id_of_index j),
@@ -328,7 +345,7 @@ type ('a, 'b) context = {
       map_filter (fn id => let val i = index_of_id id in if i >= 0 then SOME (i, nth assms i)
           else NONE end)
         used_assert_ids
-
+ val _ = @{print} ("xxx 22")
     val assm_steps = map step_of_assume used_assm_js
 
     fun extract (Lethe_Proof.Lethe_Replay_Node {id, rule, concl, bounds, ...}) =
@@ -351,7 +368,7 @@ type ('a, 'b) context = {
         (Symtab.update (name, ([], thm)) assumed, stats)
       end)
       used_rew_js (assumed, Symtab.cons_list ("parsing", parsing_time) stats)
-
+ val _ = @{print} ("xxx 33")
     val ctxt4 =
       ctxt3
       |> put_simpset (SMT_Replay.make_simpset ctxt3 [])
@@ -366,14 +383,15 @@ type ('a, 'b) context = {
     fun blockwise f (i, x) (next, y) =
       (if i > next then print_runtime_statistics i else ();
        (if i > next then i + 10 else next, f x y))
-    
     (*val _ = @{print} assumed
     val _ = @{print} proofs_input*)
     val assumed = Symtab.merge (fn ((x1,x2),(y1,y2)) => let
       in true end) (proofs_input, assumed)
+ val _ = @{print} ("xxx 44")
     val state_output as (proofs, stats, ctxt5, _, _) = (*state to be carried on*)
       fold ( (replay_step rewrite_rules ll_defs assumed [] [])) (map (fn (_,y) => y) flat_steps)
         ( (assumed, stats, ctxt4, concl_tranformation, global_transformation))
+ val _ = @{print} ("xxx 55")
     val total = Time.toMilliseconds (#elapsed (Timing.result start))
 (* val _ = @{print} actual_steps *)
 (* val _ = @{print} flat_steps *)

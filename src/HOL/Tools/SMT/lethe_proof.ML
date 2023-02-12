@@ -306,7 +306,7 @@ fun parse_raw_proof_steps (limit : string option) (ls : SMTLIB.tree list) (cx : 
     fun get_id_cx (SMTLIB.S ((SMTLIB.Sym _) :: (SMTLIB.Sym id) :: l), cx) = (id, (l, cx))
       | get_id_cx t = raise Fail ("unrecognized Lethe proof " ^ \<^make_string> t)
     fun get_id (SMTLIB.S ((SMTLIB.Sym _) :: (SMTLIB.Sym id) :: l)) = (id, l)
-      | get_id t = let val _ = @{print} t in raise Fail ("unrecognized Lethe proof " ^ \<^make_string> t) end
+      | get_id t = raise Fail ("unrecognized Lethe proof " ^ \<^make_string> t)
     fun parse_source (SMTLIB.Key "premises" :: SMTLIB.S source ::l, cx) =
         (SOME (map (fn (SMTLIB.Sym id) => id) source), (l, cx))
       | parse_source (l, cx) = (NONE, (l, cx))
@@ -354,34 +354,37 @@ fun parse_raw_proof_steps (limit : string option) (ls : SMTLIB.tree list) (cx : 
     fun tail_or_empty [] = []
       | tail_or_empty l = tl l
   
-    fun get_semantic_unit _     c []      cx (inner_proof, position) = (c,[],cx,  (inner_proof, position))
-      | get_semantic_unit limit c (x::xs) cx (inner_proof, position) = let  val [parsed_line] = parse_lines [x] in 
+    fun insert_subproof s [] = s 
+    | insert_subproof s ((subproof,position) :: subproofs_list) = 
+           insert_subproof ( raw_node_with_subproof s (insert_at (get_subproof s) subproof  position)) subproofs_list
+  
+    fun get_semantic_unit _     c []      cx inner_proofs_list _ = (c,[],cx,inner_proofs_list)
+      | get_semantic_unit limit c (x::xs) cx inner_proofs_list position = let  val [parsed_line] = parse_lines [x] in 
           case step_kind [parsed_line] of
       (ANCHOR, p, l) =>
           let
             val (anchor_id, (anchor_args, (_, cx))) = (p, cx) |> (parse_anchor_step ##> parse_args) 
             val inner_limit = (SOME anchor_id)
-            val (subproof_semantic_unit, lines_after_subproof,cx, (inner_proof_output, position_output)) 
-                = get_semantic_unit inner_limit [] (xs) cx (mk_empty_raw_node (), 0)
-            val (subproof, discharge_step :: _, cx, _) = parse_raw_proof_steps inner_limit subproof_semantic_unit cx xs
+            val (subproof_semantic_unit, lines_after_subproof,cx, inner_proofs_output_list) 
+                = get_semantic_unit inner_limit [] (xs) cx [] 0
+            val (subproof, discharge_step :: _, cx, _) = parse_raw_proof_steps inner_limit subproof_semantic_unit cx lines_after_subproof
             val (curss, (_, cx)) = parse_normal_step (discharge_step, cx)
             val s = to_raw_node subproof (fst curss, anchor_args)
-            val s = if is_empty_raw_node inner_proof_output then s 
-                else raw_node_with_subproof s (insert_at (get_subproof s) inner_proof_output  position_output)
-          in  get_semantic_unit limit c lines_after_subproof cx  (s, position) end
+            val s = insert_subproof s inner_proofs_output_list
+            val new_inner_proofs_list = inner_proofs_list @ [(s,position)]
+             
+          in  get_semantic_unit limit c lines_after_subproof cx  new_inner_proofs_list (position+1) end
       | (ASSUME, p, l) => 
         let
             val (_, t :: []) = p
               |> get_id
             val ((_, cx), _) = SMTLIB_Proof.extract_and_update_name_bindings t cx
-             in if at_discharge limit parsed_line then (c @ [parsed_line],xs, cx, (inner_proof, position))
-                else get_semantic_unit limit (c @ [parsed_line]) xs cx  (inner_proof, 
-                      (if is_empty_raw_node inner_proof then position + 1 else position)) end
+             in if at_discharge limit parsed_line then (c @ [parsed_line],xs, cx, inner_proofs_list)
+                else get_semantic_unit limit (c @ [parsed_line]) xs cx  inner_proofs_list (position+1) end
       | _ =>let  
              val (_, (_, cx)) =  (parsed_line, cx)
-                |> parse_normal_step in if at_discharge limit parsed_line then (c @ [parsed_line],xs, cx, (inner_proof, position))
-                else get_semantic_unit limit (c @ [parsed_line]) xs cx  (inner_proof, 
-                      (if is_empty_raw_node inner_proof then position + 1 else position)) end end
+                |> parse_normal_step in if at_discharge limit parsed_line then (c @ [parsed_line],xs, cx, inner_proofs_list)
+                else get_semantic_unit limit (c @ [parsed_line]) xs cx  inner_proofs_list (position+1) end end
   in
     case step_kind ls of
         (NO_STEP, _, _) => ([],[], cx, [])
@@ -396,17 +399,6 @@ fun parse_raw_proof_steps (limit : string option) (ls : SMTLIB.tree list) (cx : 
               val (rp, rl, cx, _) = parse_raw_proof_steps limit l cx []
           in (s :: rp, rl, cx, tail_or_empty lines_input) end
       | (ASSUME, p, l) =>
-
-(* 
-          let
-            val (id, t :: []) = p
-              |> get_id
-            val ((t, cx), _) = SMTLIB_Proof.extract_and_update_name_bindings t cx
-            val s = mk_raw_node id input_rule (SMTLIB.S []) [] [] t []
-            val (rp, rl, cx) = parse_raw_proof_steps limit l cx
-          in (s :: rp, rl, cx) end *)
-
-
           let
             val (id, t :: []) = p
               |> get_id
@@ -419,15 +411,14 @@ fun parse_raw_proof_steps (limit : string option) (ls : SMTLIB.tree list) (cx : 
           let
             val (anchor_id, (anchor_args, (_, cx))) = (p, cx) |> (parse_anchor_step ##> parse_args)
             val limit = (SOME anchor_id)
-            val (subproof_semantic_unit, lines_after_subproof, cx, (inner_proof_output, position_output)) 
-                = get_semantic_unit limit [] (tail_or_empty lines_input) cx ((mk_empty_raw_node ()), 0)
+            val (subproof_semantic_unit, lines_after_subproof, cx, inner_proofs_output_list) 
+                = get_semantic_unit limit [] (tail_or_empty lines_input) cx [] 0
             val (subproof, x, cx, _) = parse_raw_proof_steps limit subproof_semantic_unit cx lines_after_subproof
             val discharge_step = hd x
             val (curss, (_, cx)) = parse_normal_step (discharge_step, cx)
             val s = to_raw_node subproof (fst curss, anchor_args)
             val (rp, rl, cx, _) = parse_raw_proof_steps limit (tail_or_empty x) cx []
-            val s = if is_empty_raw_node inner_proof_output then s 
-                else raw_node_with_subproof s (insert_at (get_subproof s) inner_proof_output  position_output)
+            val s = insert_subproof s inner_proofs_output_list
           in (s :: rp, rl, cx, lines_after_subproof) end
       | (SKOLEM, p, l) =>
           let
@@ -660,8 +651,6 @@ val _ = @{print} ("concl rewritten", subproof_rewriter concl) *)
 
       (* fix step *)
       
-      val _ = @{print} ("bounds",bounds)
-      val _ = @{print} ("id",id)
       val _ = if bounds <> [] then raise (Fail "found dangling variable in concl") else ()
       val skolem_defs = (if is_skolemization rule
          then map (fn id => id ^ lethe_def) (skolems_introduced_by_rule (SMTLIB.S (map fst args))) else [])
@@ -869,8 +858,7 @@ local
       val (raw_steps, _, name_bindings_output, lines_left_output) =
 (*        parse_raw_proof_steps NONE smtlib_lines_without_qm SMTLIB_Proof.empty_name_binding*)
         parse_raw_proof_steps NONE smtlib_lines_without_qm name_bindings_input lines_left_input
-      val _ = @{print} ("raw_steps: ", raw_steps)
-      fun process step (cx, cx') =
+ fun process step (cx, cx') =
         let fun postprocess step (cx, cx') =
           let val (step, cx) = postprocess_proof compress ctxt step cx
           in (step, (cx, cx')) end
@@ -882,7 +870,6 @@ local
 (* |>  @{print}  *)
         |> (fn (steps, (cx, _)) => (flat steps, cx))
         |> compress? apfst combine_proof_steps
-(* val _ = @{print} (step) *)
     in (step, name_bindings_output, lines_left_output) end
 in
 

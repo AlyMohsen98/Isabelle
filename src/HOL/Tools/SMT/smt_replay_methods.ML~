@@ -94,6 +94,8 @@ fun pretty_thm ctxt thm = Syntax.pretty_term ctxt (Thm.concl_of thm)
 
 fun pretty_goal ctxt msg rule thms t =
   let
+    val _ = @{print} "t"
+    val _ = @{print} t
     val full_msg = msg ^ ": " ^ quote rule
     val assms =
       if null thms then []
@@ -103,7 +105,10 @@ fun pretty_goal ctxt msg rule thms t =
 
 fun replay_error ctxt msg rule thms t = error (Pretty.string_of (pretty_goal ctxt msg rule thms t))
 
-fun replay_rule_error name ctxt = replay_error ctxt ("Failed to replay" ^ name ^ " proof step")
+fun replay_rule_error name ctxt = let 
+        val _ = @{print} ("name", name)
+        val _ = @{print} ("ctxt", ctxt) 
+      in replay_error ctxt ("Failed to replay" ^ name ^ " proof step") end
 
 fun trace_goal ctxt rule thms t =
   trace ctxt (fn () => Pretty.string_of (pretty_goal ctxt "Goal" rule thms t))
